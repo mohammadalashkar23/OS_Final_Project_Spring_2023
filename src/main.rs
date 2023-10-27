@@ -61,6 +61,14 @@ impl eframe::App for MyApp {
                     self.scanning_path = self.path.clone();
                 }
             }
+            if ui.button("UP").clicked() {
+                let index = self.path.rfind('/'); 
+                self.path = self.path.clone().chars().take(index.unwrap_or(self.path.clone().len())).collect(); 
+                if self.path.is_empty() {
+                    self.path = "/".to_string();
+                }
+                self.scanning_path = self.path.clone();
+            }
             if self.scan_clicked {
                 self.scan_directory(ui); 
             }
