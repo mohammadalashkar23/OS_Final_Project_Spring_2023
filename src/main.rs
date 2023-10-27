@@ -1,110 +1,81 @@
-use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Box, Button, Entry, Label, ListBox, ScrolledWindow};
-use walkdir::WalkDir;
-use walkdir::DirEntry;
-use std::fs::metadata;
-use std::fs;
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-const APP_ID: &str = "org.gtk_rs.HelloWorld2";
+use eframe::egui;
+use walkdir:: WalkDir;
+use native_dialog::FileDialog;
 
-fn is_hidden(entry: &DirEntry) -> bool {
-    entry.file_name()
-         .to_str()
-         .map(|s| s.starts_with("."))
-         .unwrap_or(false)
+fn main() -> Result<(), eframe::Error> {
+    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::vec2(10000.0, 10000.0)),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "DISK ANALYZER",
+        options,
+        Box::new(|cc| {
+            // This gives us image support:
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+
+            Box::<MyApp>::default()
+        }),
+    )
 }
 
-fn main() {
-    // Create a new application
-    let app = Application::builder().application_id(APP_ID).build();
-
-    // Connect to "activate" signal of `app`
-    app.connect_activate(build_ui);
-
-    // Run the application
-    app.run();
+struct MyApp {
+    path: String,
+    scan_clicked: bool, 
+    scanning_path: String,
 }
 
-fn build_ui(app: &Application) {
-    // Create a window and set the title
-    let list_box = ListBox::new();
-let path_label = Label::new(None);
-    path_label.set_text("Current Directory:"); 
-    let path_label_clone = path_label.clone(); 
-    let path_entry = Entry::new();
-    let path_entry_clone = path_entry.clone(); 
-    let list_box_clone = list_box.clone();
-    
-    //path_entry.set_placeholder_text("Enter directory path");
-    let button = Button::builder()
-        .label("Scan")
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .build();
+impl Default for MyApp {
+    fn default() -> Self {
+        Self {
+            path: "/".to_owned(),
+            scan_clicked: true,
+            scanning_path: "/".to_owned(),
+        }
+    }
+}
 
-    // Connect to "clicked" signal of `button`
-     button.connect_clicked(move |_| {
-    let binding = path_entry_clone.text();
-    let directory_path = binding.as_str();
-path_label_clone.set_text(&format!("Current Directory: {}", directory_path));
-   
-
-    for entry_result in WalkDir::new(&directory_path).into_iter().filter_entry(|e| !is_hidden(e)) {
-        match entry_result {
-            Ok(entry) => {
-                let file_name = entry.file_name().to_string_lossy().to_string();
-                let metadata = fs::metadata(entry.path());
-                match metadata {
-                    Ok(metadata) => {
-                        let size = metadata.len(); // Get the size of the file in bytes
-                        let label_text = format!("{} - {} bytes", file_name, size);
-                        let label = Label::new(Some(&label_text));
-                        list_box_clone.append(&label);
-                    }
-                    Err(err) => {
-                        eprintln!("Error reading metadata: {}", err);
-                    }
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("Disk Analyzer");
+            ui.horizontal(|ui| {
+                if ui.button("Scan").clicked() {
+                    self.scanning_path = self.path.clone(); 
+                    self.scan_clicked = true; 
+                }
+                let path_label = ui.label("Path: ");
+                ui.text_edit_singleline(&mut self.path)
+                    .labelled_by(path_label.id);
+            });
+            if ui.button("Browse").clicked() {
+                // Open a folder selection dialog using new_picker()
+                if let Ok(folder) = FileDialog::new()
+                    .add_filter("All Files", &["*"])
+                    .show_open_single_dir()
+                {
+                    self.path = folder.expect("failed").to_str().unwrap_or_default().to_owned();
+                    self.scanning_path = self.path.clone();
                 }
             }
-            Err(err) => {
-                eprintln!("Error reading entry: {}", err);
+            if self.scan_clicked {
+                self.scan_directory(ui); 
+            }
+        });
+    }
+}
+
+impl MyApp {
+     fn scan_directory(&self, ui: &mut egui::Ui) {
+        for entry in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_map(|e| e.ok()) {
+            if entry.file_type().is_file() {
+                ui.label(format!("File: {}", entry.path().display()));
+            } else if entry.file_type().is_dir() {
+                ui.label(format!("Directory: {}", entry.path().display()));
             }
         }
     }
-});
-
-
-    let gtk_box = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .build();
-    let scrolled_window = ScrolledWindow::builder()
-        //.hscrollbar_policy(PolicyType::Never) // Disable horizontal scrolling
-        .min_content_width(700)
-        .max_content_width(700)
-        .min_content_height(250) // Adjust the minimum height if needed
-    .max_content_height(250) // Adjust the maximum height if needed
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .child(&list_box)
-        .build();
-     gtk_box.append(&path_label);
-    gtk_box.append(&path_entry);
-    gtk_box.append(&button);
-    gtk_box.append(&scrolled_window);
-
-    // Create a window
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .title("My GTK App")
-        .default_width(400)
-        .default_height(400)
-        .child(&gtk_box)
-        .build();
-
-    window.present();
 }
-
