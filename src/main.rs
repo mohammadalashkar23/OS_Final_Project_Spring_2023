@@ -121,7 +121,7 @@ impl PieChart {
 
                     plot_ui.polygon(Polygon::new(PlotPoints::new(points)).name(&name).highlight(highlight));
 
-                    //check for click
+                    //check for click, uses closure (aka fxn) to check if mouse was released
                     if highlight && ctx.input(|input| input.pointer.any_released()) {
                         println!("Sector {} was clicked", name);
                     }
