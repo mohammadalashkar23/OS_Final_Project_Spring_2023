@@ -1,18 +1,14 @@
 use std::f64::consts::TAU;
 use egui::plot::{Legend, Plot, PlotPoint, PlotPoints, Polygon, Text};
 use egui::{Align2, RichText};
-
-
- use eframe::egui;
+use eframe::egui;
 use native_dialog::FileDialog;
-
 use eframe::NativeOptions;
 use egui_extras::{Size, StripBuilder};
 use walkdir::WalkDir;
 use walkdir::DirEntry;
 use std::fs::metadata;
 use std::fs;
-
 use std::path::Path;
 use std::path::PathBuf;
 const FULL_CIRCLE_VERTICES: f64 = 360.0;
