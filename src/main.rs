@@ -6,7 +6,6 @@ use egui::{Align2, RichText};
  use eframe::egui;
 use native_dialog::FileDialog;
 
-
 use eframe::NativeOptions;
 use egui_extras::{Size, StripBuilder};
 use walkdir::WalkDir;
@@ -94,6 +93,9 @@ impl PieChart {
     pub fn show(&mut self, ui: &mut egui::Ui) {
         let sectors = self.sectors.clone();
 
+        //copy current context for click checking
+        let ctx = ui.ctx().clone();
+
         Plot::new(&self.name)
             .label_formatter(|_: &str, _: &PlotPoint| String::default())
             .show_background(false)
@@ -119,9 +121,13 @@ impl PieChart {
 
                     plot_ui.polygon(Polygon::new(PlotPoints::new(points)).name(&name).highlight(highlight));
 
+                    //check for click
+                    if highlight && ctx.input(|input| input.pointer.any_released()) {
+                        println!("Sector {} was clicked", name);
+                    }
+
                     if highlight {
                         let p = plot_ui.pointer_coordinate().unwrap();
-
                         // TODO proper zoom
                         let text = RichText::new(&name).size(15.0).heading();
                         plot_ui.text(Text::new(p, text).name(&name).anchor(Align2::LEFT_BOTTOM));
@@ -175,8 +181,6 @@ impl Sector {
         r < RADIUS && theta > self.start && theta < self.end
     }
 }
-
-
 
 fn main() -> Result<(), eframe::Error> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
