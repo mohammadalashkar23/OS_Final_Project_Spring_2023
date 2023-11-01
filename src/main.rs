@@ -119,7 +119,12 @@ impl PieChart {
 
                     //check for click, uses closure (aka fxn) to check if mouse was released
                     if highlight && ctx.input(|input| input.pointer.any_released()) {
-                        println!("Sector {} was clicked", name);
+                        let temp_str = format!("{}{}", String::from("/"), String::from(name.clone()));
+                        println!("Sector {} was clicked", temp_str);
+                        //self.path, self.scanning_path, change paths
+                        //self.path or self.path = "/".to_string();
+                        //Call scanning fxn here: self.update_pie_chart_data(ui);
+                        //self.update_pie_chart_data(ui);
                     }
 
                     if highlight {
@@ -216,7 +221,7 @@ impl eframe::App for MyApp {
                 if ui.button("Scan").clicked() {
                     self.scanning_path = self.path.clone(); 
                     self.scan_clicked = true; 
-                     self.update_pie_chart_data(ui);
+                    self.update_pie_chart_data(ui);
                     self.show_pie_chart = true;
                 }
                 let path_label = ui.label("Path: ");
@@ -233,7 +238,7 @@ impl eframe::App for MyApp {
                     self.scanning_path = self.path.clone();
                 }
             }
-            if ui.button("UP").clicked() {
+            if ui.button("Up").clicked() {
                 let index = self.path.rfind('/'); 
                 self.path = self.path.clone().chars().take(index.unwrap_or(self.path.clone().len())).collect(); 
                 if self.path.is_empty() {
@@ -280,7 +285,7 @@ impl MyApp {
                 match size {
                                 Ok(f) => {
                                     // The f64 value is in the Ok variant
-                                   file_data.push((f, f.to_string()));
+                                   file_data.push((f, file_name));
                                 }
                                 Err(e) => {
                                     // Handle the error
