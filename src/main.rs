@@ -13,7 +13,8 @@ use std::path::Path;
 use std::path::PathBuf;
 const FULL_CIRCLE_VERTICES: f64 = 360.0;
 const RADIUS: f64 = 0.9;
-
+use std::cell::RefCell;
+use std::rc::Rc;
 fn is_hidden(entry: &DirEntry) -> bool {
     entry.file_name()
          .to_str()
@@ -48,17 +49,24 @@ fn calculate_directory_size(directory_path: &str) -> Result<f64, std::io::Error>
         Ok(0.0) // Not a directory, return 0.0 size
     }
 }
-
-pub struct PieChart {
+#[derive(Clone)]
+struct PieChart {
     name: String,
     sectors: Vec<Sector>,
 }
-
+#[derive(Clone)]
+struct MyApp {
+    path: String,
+    scan_clicked: bool, 
+    scanning_path: String,
+    pie_chart: PieChart, //added
+    show_pie_chart: bool,
+}
 impl PieChart {
-    pub fn new<S: AsRef<str>, L: AsRef<str>>(name: S, data: &[(f64, L)]) -> Self {
-        let sum: f64 = data.iter().map(|(f, _)| f).sum();
+    pub fn new<S: AsRef<str>, L: AsRef<str>, P: AsRef<str>>(name: S, data: &[(f64, L, P)]) -> Self {
+        let sum: f64 = data.iter().map(|(f, _, _)| f).sum();
 
-        let slices: Vec<_> = data.iter().map(|(f, n)| (f / sum, n)).collect();
+        let slices: Vec<_> = data.iter().map(|(f, n, d)| (f / sum, n, d)).collect();
 
         let step = TAU / FULL_CIRCLE_VERTICES;
 
@@ -66,13 +74,13 @@ impl PieChart {
 
         let sectors = slices
             .iter()
-            .map(|(p, n)| {
+            .map(|(p, n, d)| {
                 let vertices = (FULL_CIRCLE_VERTICES * p).round() as usize;
 
                 let start = TAU * offset;
                 let end = TAU * (offset + p);
 
-                let sector = Sector::new(n, start, end, vertices, step);
+                let sector = Sector::new(n, start, end, vertices, step, d);
 
                 offset += p;
 
@@ -86,12 +94,12 @@ impl PieChart {
         }
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) {
+    pub fn show(&mut self, ui: &mut egui::Ui) -> String{
         let sectors = self.sectors.clone();
 
         //copy current context for click checking
         let ctx = ui.ctx().clone();
-
+        let mut temp_str = String::new();
         Plot::new(&self.name)
             .label_formatter(|_: &str, _: &PlotPoint| String::default())
             .show_background(false)
@@ -103,8 +111,6 @@ impl PieChart {
             .allow_zoom(false)
             .allow_scroll(false)
             .data_aspect(1.0)
-            // .set_margin_fraction([0.7; 2].into()) // this won't prevent the plot from moving
-            // `include_*` will lock it into place
             .include_x(-2.0)
             .include_x(2.0)
             .include_y(-2.0)
@@ -116,25 +122,22 @@ impl PieChart {
                     let Sector { name, points, .. } = sector;
 
                     plot_ui.polygon(Polygon::new(PlotPoints::new(points)).name(&name).highlight(highlight));
-
                     //check for click, uses closure (aka fxn) to check if mouse was released
                     if highlight && ctx.input(|input| input.pointer.any_released()) {
-                        let temp_str = format!("{}{}", String::from("/"), String::from(name.clone()));
-                        println!("Sector {} was clicked", temp_str);
-                        //self.path, self.scanning_path, change paths
-                        //self.path or self.path = "/".to_string();
-                        //Call scanning fxn here: self.update_pie_chart_data(ui);
-                        //self.update_pie_chart_data(ui);
+                        temp_str = format!("{}", String::from(sector.path.clone()));
+                        //println!("Sector {} was clicked", temp_str);
+                        
                     }
 
-                    if highlight {
-                        let p = plot_ui.pointer_coordinate().unwrap();
-                        // TODO proper zoom
-                        let text = RichText::new(&name).size(15.0).heading();
-                        plot_ui.text(Text::new(p, text).name(&name).anchor(Align2::LEFT_BOTTOM));
-                    }
+                    // if highlight {
+                    //     let p = plot_ui.pointer_coordinate().unwrap();
+                    //     // TODO proper zoom
+                    //     let text = RichText::new(&name).size(15.0).heading();
+                    //     plot_ui.text(Text::new(p, text).name(&name).anchor(Align2::LEFT_BOTTOM));
+                    // }
                 }
             });
+            temp_str
     }
 }
 
@@ -144,10 +147,11 @@ struct Sector {
     start: f64,
     end: f64,
     points: Vec<[f64; 2]>,
+    path: String, 
 }
 
 impl Sector {
-    pub fn new<S: AsRef<str>>(name: S, start: f64, end: f64, vertices: usize, step: f64) -> Self {
+    pub fn new<S: AsRef<str>, P: AsRef<str>>(name: S, start: f64, end: f64, vertices: usize, step: f64, path: P) -> Self {
         let mut points = vec![];
 
         if end - TAU != start {
@@ -168,6 +172,7 @@ impl Sector {
             start,
             end,
             points,
+            path: path.as_ref().to_string(),
         }
     }
 
@@ -183,32 +188,14 @@ impl Sector {
     }
 }
 
-fn main() -> Result<(), eframe::Error> {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-    let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::vec2(10000.0, 10000.0)),
-        ..Default::default()
-    };
-    eframe::run_native("Pie charts", options, Box::new(|ctx| Box::<MyApp>::default()))?;
-    Ok(())
-}
-
-struct MyApp {
-    path: String,
-    scan_clicked: bool, 
-    scanning_path: String,
-    pie_chart: PieChart, //added
-    show_pie_chart: bool,
-}
-
 impl Default for MyApp {
     fn default() -> Self {
         Self {
-            path: "/".to_owned(),
+            path: "/home".to_owned(),
             scan_clicked: true,
-            scanning_path: "/".to_owned(),
-             pie_chart: PieChart::new("My Pie Chart", &[(0.3, "Slice A"), (0.2, "Slice B"), (0.5, "Slice C")]),
-              show_pie_chart: false,
+            scanning_path: "/home".to_owned(),
+            pie_chart: PieChart::new("My Pie Chart", &[(0.3, "Slice A", "/"), (0.2, "Slice B", "/"), (0.5, "Slice C",  "/")]),
+            show_pie_chart: true,
         }
     }
 }
@@ -221,8 +208,8 @@ impl eframe::App for MyApp {
                 if ui.button("Scan").clicked() {
                     self.scanning_path = self.path.clone(); 
                     self.scan_clicked = true; 
+                    //self.show_pie_chart = true;
                     self.update_pie_chart_data(ui);
-                    self.show_pie_chart = true;
                 }
                 let path_label = ui.label("Path: ");
                 ui.text_edit_singleline(&mut self.path)
@@ -237,80 +224,73 @@ impl eframe::App for MyApp {
                     self.path = folder.expect("failed").to_str().unwrap_or_default().to_owned();
                     self.scanning_path = self.path.clone();
                 }
+                self.update_pie_chart_data(ui);
             }
             if ui.button("Up").clicked() {
-                let index = self.path.rfind('/'); 
-                self.path = self.path.clone().chars().take(index.unwrap_or(self.path.clone().len())).collect(); 
-                if self.path.is_empty() {
-                    self.path = "/".to_string();
+                if self.path.is_empty() || self.path == "/home" {
+                    self.path = "/home".to_string();
+                }else{
+                    let index = self.path.rfind('/'); 
+                    self.path = self.path.clone().chars().take(index.unwrap_or(self.path.clone().len())).collect();     
                 }
                 self.scanning_path = self.path.clone();
+                self.update_pie_chart_data(ui);
+            }
+            if self.show_pie_chart { // to show the initial home directory.
+                self.update_pie_chart_data(ui);
+                self.show_pie_chart = false;
             }
             if self.scan_clicked {
-                //self.scan_directory(ui); 
-               
+                let temp_str = self.pie_chart.show(ui);
+                if temp_str != "" {
+                    self.path = temp_str; 
+                    self.scanning_path = self.path.clone();
+                    self.update_pie_chart_data(ui);
+                }
             }
-             if self.scan_clicked && self.show_pie_chart {
-             self.pie_chart.show(ui);
-              }
-
         });
     }
 }
 
 impl MyApp {
-     /*fn scan_directory(&self, ui: &mut egui::Ui) {
-        for entry in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_map(|e| e.ok()) {
-            if entry.file_type().is_file() {
-                ui.label(format!("File: {}", entry.path().display()));
-            } else if entry.file_type().is_dir() {
-                ui.label(format!("Directory: {}", entry.path().display()));
+    fn update_pie_chart_data(&mut self,ui: &mut egui::Ui) {
+        let mut file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs
+
+        for entry_result in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_entry(|e| !is_hidden(e)) {
+            match entry_result {
+                Ok(entry) => {
+                if entry.file_type().is_dir() && entry.path() != Path::new(&self.scanning_path) {
+                    let file_name = entry.file_name().to_string_lossy().to_string();
+                    let entry_path = entry.path().to_string_lossy().to_string();
+                    let size = calculate_directory_size(entry.path().to_str().unwrap());
+                    match size {
+                        Ok(f) => {
+                            // The f64 value is in the Ok variant
+                            file_data.push((f, file_name, entry_path));
+                        }
+                        Err(e) => {
+                            // Handle the error
+                            eprintln!("Error: {:?}", e);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                // Handle the error
+                eprintln!("Error reading entry: {:?}", e);
+            }
             }
         }
-    }*/
-     fn update_pie_chart_data(&mut self,ui: &mut egui::Ui) {
-        // Replace this with your own data
-        let new_data = &[(0.3, "Slice A"), (0.2, "Slice B"), (0.5, "Slice C")];
-        let data: Vec<_> = (0..8).map(|i| (0.125, format!("{}: 12.5%", i + 1))).collect();
-
-    let directory_path = "/home/mohammad/"; // Replace with your directory path
-    let mut file_data: Vec<(f64, String)> = Vec::new(); // Vector to store file name and size pairs
-
-    for entry_result in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_entry(|e| !is_hidden(e)) {
-        match entry_result {
-            Ok(entry) => {
-                let file_name = entry.file_name().to_string_lossy().to_string();
-                let metadata = fs::metadata(entry.path());
-                let size = calculate_directory_size(entry.path().to_str().unwrap());
-                match size {
-                                Ok(f) => {
-                                    // The f64 value is in the Ok variant
-                                   file_data.push((f, file_name));
-                                }
-                                Err(e) => {
-                                    // Handle the error
-                                    eprintln!("Error: {:?}", e);
-                                }
-                            }
-                
-                /*match metadata {
-                    Ok(metadata) => {
-                        //let size = metadata.len(); // Get the size of the file in bytes
-                        //file_data.push((file_name, size)); // Add the pair to the vector
-                        //let size = metadata.len() as f64; // Convert size to f64
-                         let size =walk_dir(Path::new(directory_path));
-                        file_data.push((size, file_name));
-                    }
-                    Err(err) => {
-                        eprintln!("Error reading metadata: {}", err);
-                    }
-                }*/
-            }
-            Err(err) => {
-                eprintln!("Error reading entry: {}", err);
-            }
-        }
+        self.pie_chart = PieChart::new("Pie Chart", &file_data);
     }
-        self.pie_chart = PieChart::new("My Pie Chart", &file_data);
-    }
+}
+
+fn main() -> Result<(), eframe::Error> {
+    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::vec2(10000.0, 10000.0)),
+        ..Default::default()
+    };
+    eframe::run_native("DISK ANALYZER", options, Box::new(|ctx| Box::<MyApp>::default()))?;
+    Ok(())
 }
