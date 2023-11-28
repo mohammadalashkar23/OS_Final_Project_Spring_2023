@@ -254,6 +254,7 @@ impl eframe::App for MyApp {
 
 impl MyApp {
     fn update_pie_chart_data(&mut self,ui: &mut egui::Ui) {
+        let mut total_size = 0.0;
         let mut file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs
 
         for entry_result in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_entry(|e| !is_hidden(e)) {
@@ -266,6 +267,7 @@ impl MyApp {
                     match size {
                         Ok(f) => {
                             // The f64 value is in the Ok variant
+                            total_size = total_size + f;
                             file_data.push((f, file_name, entry_path));
                         }
                         Err(e) => {
@@ -281,7 +283,18 @@ impl MyApp {
             }
             }
         }
-        self.pie_chart = PieChart::new("Pie Chart", &file_data);
+        let smallest_size = total_size/360.0; //smallest size a dir can be
+        // println!("TOTAL SIZE: {}", total_size);
+
+        let mut clean_file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs, only large enough dirs
+
+        for i in 0..file_data.len(){
+            if file_data[i].0 > smallest_size{
+                clean_file_data.push((file_data[i].0, file_data[i].1.to_string(), file_data[i].2.to_string()));
+            }
+           
+        }
+        self.pie_chart = PieChart::new("Pie Chart", &clean_file_data);
     }
 }
 
