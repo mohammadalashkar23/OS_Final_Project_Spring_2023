@@ -12,7 +12,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 const FULL_CIRCLE_VERTICES: f64 = 360.0;
-const RADIUS: f64 = 0.9;
+const RADIUS: f64 = 0.7;
 use std::cell::RefCell;
 use std::rc::Rc;
 fn is_hidden(entry: &DirEntry) -> bool {
@@ -128,13 +128,6 @@ impl PieChart {
                         //println!("Sector {} was clicked", temp_str);
                         
                     }
-
-                    // if highlight {
-                    //     let p = plot_ui.pointer_coordinate().unwrap();
-                    //     // TODO proper zoom
-                    //     let text = RichText::new(&name).size(15.0).heading();
-                    //     plot_ui.text(Text::new(p, text).name(&name).anchor(Align2::LEFT_BOTTOM));
-                    // }
                 }
             });
             temp_str
@@ -283,17 +276,24 @@ impl MyApp {
             }
             }
         }
-        let smallest_size = total_size/360.0; //smallest size a dir can be
-        // println!("TOTAL SIZE: {}", total_size);
 
-        let mut clean_file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs, only large enough dirs
+        let smallest_size = total_size/360.0; //smallest size a dir can be
+        let mut clean_file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs, only dirs > 1/360th total size
+        let mut small_file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs, only smallers dirs
 
         for i in 0..file_data.len(){
             if file_data[i].0 > smallest_size{
                 clean_file_data.push((file_data[i].0, file_data[i].1.to_string(), file_data[i].2.to_string()));
             }
+            else{
+                small_file_data.push((file_data[i].0, file_data[i].1.to_string(), file_data[i].2.to_string()));
+            }
            
         }
+
+        //Draw box here:
+
+
         self.pie_chart = PieChart::new("Pie Chart", &clean_file_data);
     }
 }
