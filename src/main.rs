@@ -61,6 +61,7 @@ struct MyApp {
     scanning_path: String,
     pie_chart: PieChart, //added
     show_pie_chart: bool,
+    small_directories: Vec<String>,
 }
 impl PieChart {
     pub fn new<S: AsRef<str>, L: AsRef<str>, P: AsRef<str>>(name: S, data: &[(f64, L, P)]) -> Self {
@@ -96,11 +97,15 @@ impl PieChart {
 
     pub fn show(&mut self, ui: &mut egui::Ui) -> String{
         let sectors = self.sectors.clone();
+         let desired_size = egui::vec2(100.0, 100.0); // Set your desired size here
+    //let desired_size_usize = egui::vec2(desired_size.x as usize, desired_size.y as usize);
 
         //copy current context for click checking
         let ctx = ui.ctx().clone();
         let mut temp_str = String::new();
         Plot::new(&self.name)
+            .width(1290.0)
+            .height(530.0)
             .label_formatter(|_: &str, _: &PlotPoint| String::default())
             .show_background(false)
             .legend(Legend::default())
@@ -189,6 +194,8 @@ impl Default for MyApp {
             scanning_path: "/home".to_owned(),
             pie_chart: PieChart::new("My Pie Chart", &[(0.3, "Slice A", "/"), (0.2, "Slice B", "/"), (0.5, "Slice C",  "/")]),
             show_pie_chart: true,
+            // Initialize small_directories as an empty vector
+            small_directories: Vec::new(),
         }
     }
 }
@@ -197,6 +204,10 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Disk Analyzer");
+          
+
+
+
             ui.horizontal(|ui| {
                 if ui.button("Scan").clicked() {
                     self.scanning_path = self.path.clone(); 
@@ -233,6 +244,7 @@ impl eframe::App for MyApp {
                 self.update_pie_chart_data(ui);
                 self.show_pie_chart = false;
             }
+           
             if self.scan_clicked {
                 let temp_str = self.pie_chart.show(ui);
                 if temp_str != "" {
@@ -241,6 +253,20 @@ impl eframe::App for MyApp {
                     self.update_pie_chart_data(ui);
                 }
             }
+             let row_height = 10.0;
+let total_rows = 10;
+   egui::ScrollArea::vertical().max_height(20.0).max_width(200.0).auto_shrink([false;2]).show_rows(ui, row_height, total_rows, |ui, row_range| {
+   if !self.small_directories.is_empty(){
+    for directory in &self.small_directories {
+                   ui.label(directory);
+               }
+    }
+    else
+    {
+    ui.label("No small directories found.");
+    }
+});
+ 
         });
     }
 }
@@ -295,6 +321,7 @@ impl MyApp {
 
 
         self.pie_chart = PieChart::new("Pie Chart", &clean_file_data);
+        self.small_directories = small_file_data.iter().map(|(_, name, _)| name.clone()).collect();
     }
 }
 
