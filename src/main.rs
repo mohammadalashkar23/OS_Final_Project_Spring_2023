@@ -290,7 +290,12 @@ impl MyApp {
     fn update_pie_chart_data(&mut self,ui: &mut egui::Ui) {
         let mut total_size = 0.0;
         let mut file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs
-
+       if self.scanning_path=="others"
+       {
+        
+       }
+       else
+       {
         for entry_result in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_entry(|e| !is_hidden(e)) {
             match entry_result {
                 Ok(entry) => {
@@ -331,12 +336,23 @@ impl MyApp {
             }
            
         }
+        let mut total_small=0.0; 
+        for i in 0..small_file_data.len()
+        {
+        total_small=total_small + small_file_data[i].0; 
+        }
+        if total_small>0.0 
+        { if total_small<smallest_size 
+        { total_small =smallest_size; }
+        clean_file_data.push((total_small, ("others").to_string(), ("others").to_string()));
+        }
 
         //Draw box here:
 
         let mut radius = ui.available_size().x.min(ui.available_size().y) / 1000.0;
         self.pie_chart = PieChart::new("Pie Chart", &clean_file_data, self.radius.into());
         self.small_directories = small_file_data.iter().map(|(_, name, _)| name.clone()).collect();
+    }
     }
 }
 
