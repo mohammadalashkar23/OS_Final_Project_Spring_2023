@@ -14,6 +14,15 @@ use std::path::PathBuf;
 const FULL_CIRCLE_VERTICES: f64 = 360.0;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::fs::File;
+use std::io::Write;
+use sysinfo::{NetworkExt, NetworksExt, ProcessExt, System, SystemExt};
+//use core::error::Error;
+use core::fmt::Error;
+//use eframe::Error;
+//use native_dialog::Error;
+use std::process::Command;
+
 fn is_hidden(entry: &DirEntry) -> bool {
     entry.file_name()
          .to_str()
@@ -280,6 +289,13 @@ impl eframe::App for MyApp {
                 self.scanning_path = self.path.clone();
                 self.update_pie_chart_data(ui);
             }
+             if ui.button("Report").clicked() {
+                if let Err(e) = self.create_file() {
+                    eprintln!("Error creating file: {:?}", e);
+                } else {
+                    println!("File created successfully!");
+                }
+            }
 
             if self.scan_clicked {
                 let temp_str = self.pie_chart.show(ui);
@@ -315,6 +331,28 @@ let total_rows = 10;
 }
 
 impl MyApp {
+fn create_file(&self) -> Result<(), std::io::Error> {
+       let mut file = File::create("disk_space.txt")?;
+    let mut sys = System::new_all();
+    sys.refresh_all();
+// Get the current disk
+       let output = Command::new("df")
+        .arg("-h") // Human-readable output
+        .output()
+        .expect("Failed to execute command");
+
+    // Check if the command succeeded
+    if output.status.success() {
+        // Write the output to the file
+        file.write_all(&output.stdout)?;
+    } else {
+        // If the command failed, write the error message to the file
+        let error_msg = format!("Error: {}", String::from_utf8_lossy(&output.stderr));
+        file.write_all(error_msg.as_bytes())?;
+    }
+    Ok(())
+       
+    }
     fn update_pie_chart_data(&mut self,ui: &mut egui::Ui) {
         let mut total_size = 0.0;
         let mut file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs
