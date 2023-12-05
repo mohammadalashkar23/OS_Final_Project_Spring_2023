@@ -16,4 +16,5 @@ env_logger = "0.10.0"
 #walkdir = "2.4.0"
 native-dialog = "0.6.4"
 sysinfo = "0.23.0"
-
+dirs = "5.0.1"
+detect-duplicates = "0.2.1"

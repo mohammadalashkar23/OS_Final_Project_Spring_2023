@@ -94,7 +94,6 @@ struct MyApp {
     hidden: bool, 
     compressed: bool, 
     sorted: bool,
-    recommendations: bool,
 }
 impl PieChart {
     //creates empty pie chart, which will eventually be updated w/ proper radius
@@ -253,7 +252,6 @@ impl Default for MyApp {
             hidden: false, 
             compressed: false, 
             sorted: false,
-            recommendations : false,
         }
     }
 }
@@ -313,12 +311,8 @@ impl eframe::App for MyApp {
                 if let Err(e) = self.recommendations() {
                     eprintln!("Error creating file: {:?}", e);
                 } else {
-                   self.recommendations = true;
+                    println!("File created successfully!");
                 }
-                
-            }
-            if self.recommendations {
-                ui.label("Recommendations generated!");
             }
              });
             if self.scan_clicked {
@@ -389,16 +383,14 @@ fn recommendations(&self)->Result<(), std::io::Error> {
                 }
             }
         }
-        let current_path = self.scanning_path.clone();
-        let base_path = PathBuf::from(current_path);
+        let base_path = PathBuf::from("/home/hajj-ahmed/OS_Final_Project_Spring_2023/src");
         let descendants = get_descendants(&base_path);
         let duplicates = get_duplicates_hashed(&descendants);
         for row in duplicates.iter() {
         // Iterate over elements in each row
-            writeln!(file, "Duplicates:");
             for element in row.iter() {
                 // Do something with the element
-                writeln!(file, "- {:?}", element);
+                println!("PathBuf: {:?}", element);
             }
         }
         Ok(())
