@@ -12,7 +12,6 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 const FULL_CIRCLE_VERTICES: f64 = 360.0;
-const RADIUS: f64 = 0.7;
 use std::cell::RefCell;
 use std::rc::Rc;
 fn is_hidden(entry: &DirEntry) -> bool {
@@ -59,12 +58,21 @@ struct MyApp {
     path: String,
     scan_clicked: bool, 
     scanning_path: String,
-    pie_chart: PieChart, //added
+    pie_chart: PieChart,
     show_pie_chart: bool,
     small_directories: Vec<String>,
+    radius: f64,
 }
 impl PieChart {
-    pub fn new<S: AsRef<str>, L: AsRef<str>, P: AsRef<str>>(name: S, data: &[(f64, L, P)]) -> Self {
+    //creates empty pie chart, which will eventually be updated w/ proper radius
+    pub fn new_empty() -> Self {
+        Self {
+            name: String::new(),
+            sectors: Vec::new(),
+        }
+    }
+    
+    pub fn new<S: AsRef<str>, L: AsRef<str>, P: AsRef<str>>(name: S, data: &[(f64, L, P)], radius: f64) -> Self {
         let sum: f64 = data.iter().map(|(f, _, _)| f).sum();
 
         let slices: Vec<_> = data.iter().map(|(f, n, d)| (f / sum, n, d)).collect();
@@ -81,7 +89,7 @@ impl PieChart {
                 let start = TAU * offset;
                 let end = TAU * (offset + p);
 
-                let sector = Sector::new(n, start, end, vertices, step, d);
+                let sector = Sector::new(n, start, end, vertices, step, d, radius);
 
                 offset += p;
 
@@ -130,8 +138,6 @@ impl PieChart {
                     //check for click, uses closure (aka fxn) to check if mouse was released
                     if highlight && ctx.input(|input| input.pointer.any_released()) {
                         temp_str = format!("{}", String::from(sector.path.clone()));
-                        //println!("Sector {} was clicked", temp_str);
-                        
                     }
                 }
             });
@@ -149,21 +155,21 @@ struct Sector {
 }
 
 impl Sector {
-    pub fn new<S: AsRef<str>, P: AsRef<str>>(name: S, start: f64, end: f64, vertices: usize, step: f64, path: P) -> Self {
+    pub fn new<S: AsRef<str>, P: AsRef<str>>(name: S, start: f64, end: f64, vertices: usize, step: f64, path: P, radius: f64) -> Self {
         let mut points = vec![];
 
         if end - TAU != start {
             points.push([0.0, 0.0]);
         }
 
-        points.push([RADIUS * start.sin(), RADIUS * start.cos()]);
+        points.push([radius * start.sin(), radius * start.cos()]);
 
         for v in 1..vertices {
             let t = start + step * v as f64;
-            points.push([RADIUS * t.sin(), RADIUS * t.cos()]);
+            points.push([radius * t.sin(), radius * t.cos()]);
         }
 
-        points.push([RADIUS * end.sin(), RADIUS * end.cos()]);
+        points.push([radius * end.sin(), radius * end.cos()]);
 
         Self {
             name: name.as_ref().to_string(),
@@ -181,8 +187,9 @@ impl Sector {
         if theta < 0.0 {
             theta += TAU;
         }
-
-        r < RADIUS && theta > self.start && theta < self.end
+        //gets last point in self.points array (which is on circumference), calcs distance from 0,0 to that point to get radius.
+        let radius = (self.points.last().unwrap()[0]).hypot(self.points.last().unwrap()[1]);
+        r < radius && theta > self.start && theta < self.end
     }
 }
 
@@ -192,10 +199,11 @@ impl Default for MyApp {
             path: "/home".to_owned(),
             scan_clicked: true,
             scanning_path: "/home".to_owned(),
-            pie_chart: PieChart::new("My Pie Chart", &[(0.3, "Slice A", "/"), (0.2, "Slice B", "/"), (0.5, "Slice C",  "/")]),
+            pie_chart: PieChart::new_empty(),
             show_pie_chart: true,
             // Initialize small_directories as an empty vector
             small_directories: Vec::new(),
+            radius: 0.0,
         }
     }
 }
@@ -204,9 +212,8 @@ impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Disk Analyzer");
-          
-
-
+            //find max size of x and y axis, radius will be less than that.
+            self.radius = ui.available_size().x.min(ui.available_size().y) as f64 / 1000.0;
 
             ui.horizontal(|ui| {
                 if ui.button("Scan").clicked() {
@@ -240,11 +247,7 @@ impl eframe::App for MyApp {
                 self.scanning_path = self.path.clone();
                 self.update_pie_chart_data(ui);
             }
-            if self.show_pie_chart { // to show the initial home directory.
-                self.update_pie_chart_data(ui);
-                self.show_pie_chart = false;
-            }
-           
+
             if self.scan_clicked {
                 let temp_str = self.pie_chart.show(ui);
                 if temp_str != "" {
@@ -319,8 +322,8 @@ impl MyApp {
 
         //Draw box here:
 
-
-        self.pie_chart = PieChart::new("Pie Chart", &clean_file_data);
+        let mut radius = ui.available_size().x.min(ui.available_size().y) / 1000.0;
+        self.pie_chart = PieChart::new("Pie Chart", &clean_file_data, self.radius.into());
         self.small_directories = small_file_data.iter().map(|(_, name, _)| name.clone()).collect();
     }
 }
