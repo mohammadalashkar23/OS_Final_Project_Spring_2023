@@ -20,6 +20,15 @@ fn is_hidden(entry: &DirEntry) -> bool {
          .map(|s| s.starts_with("."))
          .unwrap_or(false)
 }
+fn is_compressed_file(entry: &DirEntry) -> bool {
+    let compressed_extensions = [".zip", ".gz", ".tar",".rar"];
+    entry
+        .path()
+        .to_str()
+        .map(|name| compressed_extensions.iter().any(|&ext| name.ends_with(ext)))
+        .unwrap_or(false)
+}
+
 fn calculate_directory_size(directory_path: &str) -> Result<f64, std::io::Error> {
     let path = Path::new(directory_path);
     if path.is_dir() {
@@ -62,6 +71,9 @@ struct MyApp {
     show_pie_chart: bool,
     small_directories: Vec<String>,
     radius: f64,
+    hidden: bool, 
+    compressed: bool, 
+    sorted: bool,
 }
 impl PieChart {
     //creates empty pie chart, which will eventually be updated w/ proper radius
@@ -216,6 +228,9 @@ impl Default for MyApp {
             // Initialize small_directories as an empty vector
             small_directories: Vec::new(),
             radius: 0.0,
+            hidden: false, 
+            compressed: false, 
+            sorted: false,
         }
     }
 }
@@ -237,6 +252,10 @@ impl eframe::App for MyApp {
                 let path_label = ui.label("Path: ");
                 ui.text_edit_singleline(&mut self.path)
                     .labelled_by(path_label.id);
+                ui.label("filters");
+                ui.checkbox(&mut self.hidden, "Hidden files");
+                ui.checkbox(&mut self.compressed, "Compressed files");
+                ui.checkbox(&mut self.sorted, "Sorted visual");
             });
             if ui.button("Browse").clicked() {
                 // Open a folder selection dialog using new_picker()
@@ -296,10 +315,10 @@ impl MyApp {
        }
        else
        {
-        for entry_result in WalkDir::new(&self.scanning_path).max_depth(1).into_iter().filter_entry(|e| !is_hidden(e)) {
+        for entry_result in WalkDir::new(&self.scanning_path).max_depth(1).into_iter() {
             match entry_result {
                 Ok(entry) => {
-                if entry.file_type().is_dir() && entry.path() != Path::new(&self.scanning_path) {
+                if ((entry.file_type().is_dir() && !is_hidden(&entry)) || (self.hidden && is_hidden(&entry)) || (self.compressed && is_compressed_file(&entry))) && entry.path() != Path::new(&self.scanning_path) {
                     let file_name = entry.file_name().to_string_lossy().to_string();
                     let entry_path = entry.path().to_string_lossy().to_string();
                     let size = calculate_directory_size(entry.path().to_str().unwrap());
@@ -322,7 +341,9 @@ impl MyApp {
             }
             }
         }
-
+        if self.sorted {
+            file_data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        }
         let smallest_size = total_size/360.0; //smallest size a dir can be
         let mut clean_file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs, only dirs > 1/360th total size
         let mut small_file_data: Vec<(f64, String, String)> = Vec::new(); // Vector to store file name and size pairs, only smallers dirs
