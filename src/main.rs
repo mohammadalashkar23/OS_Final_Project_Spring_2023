@@ -75,7 +75,7 @@ impl PieChart {
     pub fn new<S: AsRef<str>, L: AsRef<str>, P: AsRef<str>>(name: S, data: &[(f64, L, P)], radius: f64) -> Self {
         let sum: f64 = data.iter().map(|(f, _, _)| f).sum();
 
-        let slices: Vec<_> = data.iter().map(|(f, n, d)| (f / sum, n, d)).collect();
+        let slices: Vec<_> = data.iter().map(|(f, n, d)| (f / sum, f, n, d)).collect();
 
         let step = TAU / FULL_CIRCLE_VERTICES;
 
@@ -83,13 +83,13 @@ impl PieChart {
 
         let sectors = slices
             .iter()
-            .map(|(p, n, d)| {
+            .map(|(p, f, n, d)| {
                 let vertices = (FULL_CIRCLE_VERTICES * p).round() as usize;
 
                 let start = TAU * offset;
                 let end = TAU * (offset + p);
 
-                let sector = Sector::new(n, start, end, vertices, step, d, radius);
+                let sector = Sector::new(n, start, end, vertices, step, d, radius, **f);
 
                 offset += p;
 
@@ -139,6 +139,16 @@ impl PieChart {
                     if highlight && ctx.input(|input| input.pointer.any_released()) {
                         temp_str = format!("{}", String::from(sector.path.clone()));
                     }
+                    if highlight {
+                        let p = plot_ui.pointer_coordinate().unwrap();
+                        let mut p1 = p.clone(); 
+                        p1.y = p1.y-0.05;
+                        // TODO proper zoom
+                        let text = RichText::new(&name).size(15.0).heading();
+                        let text1 = RichText::new(&(sector.size).to_string()).size(15.0).heading();
+                        plot_ui.text(Text::new(p, text).name(&name).anchor(Align2::LEFT_BOTTOM));
+                        plot_ui.text(Text::new(p1, text1).name(&(sector.size).to_string()).anchor(Align2::LEFT_BOTTOM));
+                    }
                 }
             });
             temp_str
@@ -152,10 +162,11 @@ struct Sector {
     end: f64,
     points: Vec<[f64; 2]>,
     path: String, 
+    size: f64,
 }
 
 impl Sector {
-    pub fn new<S: AsRef<str>, P: AsRef<str>>(name: S, start: f64, end: f64, vertices: usize, step: f64, path: P, radius: f64) -> Self {
+    pub fn new<S: AsRef<str>, P: AsRef<str>>(name: S, start: f64, end: f64, vertices: usize, step: f64, path: P, radius: f64, size: f64) -> Self {
         let mut points = vec![];
 
         if end - TAU != start {
@@ -177,6 +188,7 @@ impl Sector {
             end,
             points,
             path: path.as_ref().to_string(),
+            size, 
         }
     }
 
