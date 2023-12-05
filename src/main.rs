@@ -70,6 +70,7 @@ struct MyApp {
     pie_chart: PieChart,
     show_pie_chart: bool,
     small_directories: Vec<String>,
+    small_directories2: Vec<f64>,
     radius: f64,
     hidden: bool, 
     compressed: bool, 
@@ -227,6 +228,7 @@ impl Default for MyApp {
             show_pie_chart: true,
             // Initialize small_directories as an empty vector
             small_directories: Vec::new(),
+            small_directories2: Vec::new(),
             radius: 0.0,
             hidden: false, 
             compressed: false, 
@@ -290,8 +292,15 @@ impl eframe::App for MyApp {
              let row_height = 10.0;
 let total_rows = 10;
    egui::ScrollArea::vertical().max_height(20.0).max_width(200.0).auto_shrink([false;2]).show_rows(ui, row_height, total_rows, |ui, row_range| {
-   if !self.small_directories.is_empty(){
-    for directory in &self.small_directories {
+   if !self.small_directories.is_empty(){let mut combined_labels: Vec<String> = Vec::new();
+
+    // Combine the labels from small_directories and converted f64 values from small_directories2
+    for (directory, num) in self.small_directories.iter().zip(&self.small_directories2) {
+        let label = format!("{} - {}", directory, num);
+        combined_labels.push(label);
+    }
+
+    for directory in &combined_labels {
                    ui.label(directory);
                }
     }
@@ -373,6 +382,7 @@ impl MyApp {
         let mut radius = ui.available_size().x.min(ui.available_size().y) / 1000.0;
         self.pie_chart = PieChart::new("Pie Chart", &clean_file_data, self.radius.into());
         self.small_directories = small_file_data.iter().map(|(_, name, _)| name.clone()).collect();
+         self.small_directories2 = small_file_data.iter().map(|(size, _, _)| size.clone()).collect();
     }
     }
 }
