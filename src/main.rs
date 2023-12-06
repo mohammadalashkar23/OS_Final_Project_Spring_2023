@@ -4,6 +4,7 @@ use std::f64::consts::TAU;
 use egui::plot::{Legend, Plot, PlotPoint, PlotPoints, Polygon, Text};
 use egui::{Align2, RichText};
 use eframe::egui;
+use egui::Style;
 use native_dialog::FileDialog;
 use eframe::NativeOptions;
 use egui_extras::{Size, StripBuilder};
@@ -11,6 +12,9 @@ use walkdir::WalkDir;
 use walkdir::DirEntry;
 use std::fs::metadata;
 use std::fs;
+use egui::Color32;
+use egui::Visuals;
+use egui::Stroke;
 use std::path::Path;
 use std::path::PathBuf;
 const FULL_CIRCLE_VERTICES: f64 = 360.0;
@@ -339,6 +343,14 @@ impl eframe::App for MyApp {
                 }
                 
             }
+            if ui.button("Toggle Dark/Light Mode").clicked() {
+                let visuals = if ui.visuals().dark_mode {
+                    Visuals::light()
+                } else {
+                    Visuals::dark()
+                };
+                ctx.set_visuals(visuals);
+            }
             if self.recommendations {
                 ui.label("Recommendations generated!");
             }
@@ -398,11 +410,12 @@ fn recommendations(&self)->Result<(), std::io::Error> {
         let trash_path= dirs::home_dir()
         .map(|home| home.join(".local/share/Trash"))
         .expect("Could not determine home directory");
-        fs::remove_file("recommendations.txt")?;
         let mut file = OpenOptions::new()
         .create(true)
         .append(true)
         .open("recommendations.txt")?;
+        file.set_len(0)?;
+        //fs::remove_file("recommendations.txt")?;
         writeln!(file, "Directories to consider:")?;
         // Append data to the file
         if !is_directory_empty(&trash_path) {

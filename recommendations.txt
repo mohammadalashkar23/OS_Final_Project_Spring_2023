@@ -1,0 +1,7 @@
+Directories to consider:
+- Empty the trash
+- Directory accessed more than a month ago: "/home/hajj-ahmed/snap/firefox/3290/.themes"
+- Directory accessed more than a month ago: "/home/hajj-ahmed/snap/firefox/3290/.local/share/themes"
+Duplicates:
+- "/home/hajj-ahmed/OS_Final_Project_Spring_2023/src/main (copy).rs"
+- "/home/hajj-ahmed/OS_Final_Project_Spring_2023/src/main (another copy).rs"
