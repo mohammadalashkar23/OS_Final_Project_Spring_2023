@@ -289,7 +289,7 @@ impl eframe::App for MyApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Disk Analyzer");
             //find max size of x and y axis, radius will be less than that.
-            self.radius = ui.available_size().x.min(ui.available_size().y) as f64 / 1000.0;
+            self.radius = ui.available_size().x.min(ui.available_size().y) as f64 / 1200.0;
 
             ui.horizontal(|ui| {
                 if ui.button("Scan").clicked() {
@@ -540,7 +540,7 @@ fn create_file(&self) -> Result<(), std::io::Error> {
 
         //Draw box here:
 
-        let mut radius = ui.available_size().x.min(ui.available_size().y) / 1000.0;
+        let mut radius = ui.available_size().x.min(ui.available_size().y) / 1200.0;
         self.pie_chart = PieChart::new("Pie Chart", &clean_file_data, self.radius.into());
         self.small_directories = small_file_data.iter().map(|(_, name, _)| name.clone()).collect();
          self.small_directories2 = small_file_data.iter().map(|(size, _, _)| size.clone()).collect();
