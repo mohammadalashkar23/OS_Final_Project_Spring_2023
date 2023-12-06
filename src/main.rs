@@ -180,7 +180,29 @@ impl PieChart {
                         let text = RichText::new(&name).size(15.0).heading();
                         let text1 = RichText::new(&(sector.size).to_string()).size(15.0).heading();
                         plot_ui.text(Text::new(p, text).name(&name).anchor(Align2::LEFT_BOTTOM));
-                        plot_ui.text(Text::new(p1, text1).name(&(sector.size).to_string()).anchor(Align2::LEFT_BOTTOM));
+                         if sector.size >= (1024.0*1024.0*1024.0)
+      {
+            let label = format!("{} GB",  sector.size/(1024.0*1024.0*1024.0));
+           let text1 = RichText::new(&(label).to_string()).size(15.0).heading();
+            plot_ui.text(Text::new(p1, text1).name(&(label).to_string()).anchor(Align2::LEFT_BOTTOM));
+     }else if sector.size >= (1024.0*1024.0)
+     {
+         let label = format!("{} MB",  sector.size/(1024.0*1024.0));
+          let text1 = RichText::new(&(label).to_string()).size(15.0).heading();
+           plot_ui.text(Text::new(p1, text1).name(&(label).to_string()).anchor(Align2::LEFT_BOTTOM));
+     }
+     else if sector.size >= (1024.0)
+     {
+         let label = format!(" {} KB", sector.size/1024.0);
+         let text1 = RichText::new(&(label).to_string()).size(15.0).heading();
+          plot_ui.text(Text::new(p1, text1).name(&(label).to_string()).anchor(Align2::LEFT_BOTTOM));
+     }
+     else
+     {
+         let label = format!(" {} B", sector.size);
+          let text1 = RichText::new(&(label).to_string()).size(15.0).heading();
+           plot_ui.text(Text::new(p1, text1).name(&(label).to_string()).anchor(Align2::LEFT_BOTTOM));
+     }
                     }
                 }
             });
@@ -335,9 +357,25 @@ let total_rows = 10;
    if !self.small_directories.is_empty(){let mut combined_labels: Vec<String> = Vec::new();
 
     // Combine the labels from small_directories and converted f64 values from small_directories2
-    for (directory, num) in self.small_directories.iter().zip(&self.small_directories2) {
-        let label = format!("{} - {}", directory, num);
+    for (directory, num) in self.small_directories.iter().zip(&self.small_directories2) {if num >= &(1024.0*1024.0*1024.0)
+    {
+        let label = format!("{} - {} GB", directory, num/(1024.0*1024.0*1024.0));
         combined_labels.push(label);
+    }else if num >= &(1024.0*1024.0)
+    {
+        let label = format!("{} - {} MB", directory, num/(1024.0*1024.0));
+        combined_labels.push(label);
+    }
+    else if num >= &(1024.0)
+    {
+        let label = format!("{} - {} KB", directory, num/1024.0);
+        combined_labels.push(label);
+    }
+    else
+    {
+        let label = format!("{} - {} B", directory, num);
+        combined_labels.push(label);
+    }
     }
 
     for directory in &combined_labels {
